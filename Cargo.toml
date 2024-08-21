@@ -1,0 +1,12 @@
+[package]
+name = "hra"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+json = "0.12.4"
+unidecode = "0.3.0"
+strum = "0.26.3"
+strum_macros = "0.26.4"
+anyhow = "1.0.86"
+itertools = "0.13.0"

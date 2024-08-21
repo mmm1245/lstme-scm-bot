@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::str::FromStr;
@@ -6,6 +7,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use json::{object, JsonValue};
 use crate::{Element, Inventory, Miestnost, Recipe};
+use crate::Miestnost::Sklad;
 
 pub struct Client{
     socket: TcpStream,
@@ -110,6 +112,12 @@ impl Client{
         let mut str = String::new();
         self.reader.read_line(&mut str).unwrap();
         str
+    }
+    pub fn list_elements_in_storage(&mut self) -> HashMap<Element, u32>{
+        self.go_to(Sklad);
+        let elements = self.perform("use", vec!["el".to_string(), "list".to_string()]);
+        let elements = &elements["data"]["elements"];
+        elements.members().map(|json|(Element::from_str(json["name"].as_str().unwrap()).expect(format!("unknown item {}", json["name"].as_str().unwrap()).as_str()), json["count"].as_u32().unwrap())).collect()
     }
     pub fn read_json(&mut self, action: &str) -> JsonValue{
         loop{

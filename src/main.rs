@@ -1,6 +1,6 @@
 mod client;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{format, Debug, Display, Formatter};
 use std::str::FromStr;
 use std::{io, thread};
@@ -19,16 +19,19 @@ fn main() {
     //println!("{}", Miestnost::from_str("AVečko").unwrap());
 
     let mut client = Client::new("scm.lstme.sk:7000", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
-    let mut client2 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #1", "3hr2mxWYNuQ3qu2p96ZdzEN8");
+    /*let mut client2 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #1", "3hr2mxWYNuQ3qu2p96ZdzEN8");
     let mut client3 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #2", "PDUJeB7eaCKXZhVvFty2hyei");
     //let mut client = Client::new("localhost:6969", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
-    loop {
-        for client in [&mut client, &mut client2, &mut client3] {
+    /*thread::spawn(move ||*/ loop {
+        for client in [&mut client2, &mut client3] {
             client.go_to(Datacentrum);
             client.perform("use", vec!["PEPU".to_string()]);
         }
         thread::sleep(Duration::from_secs(10));
-    }
+    }//);*/
+
+    recursive_craft(&mut client, Tank);
+
     /*client.craft(&Recipe{ artefakt kolektor
         station: Dielna,
         ingredients: vec![Rekurzium, Kapacitat, Javascrypton, Obskurcium, Rezistor]
@@ -36,11 +39,15 @@ fn main() {
     //println!("here");
     //println!("{}", client.perform("examine", vec![]));
     //return;
-    /*for _ in 0..10 {
-        recursive_craft(&mut client, Rezistor);
-        //client.craft(&Rezistor.get_recipe().unwrap()).unwrap();
+    /*for _ in 0..50 {
+        //recursive_craft(&mut client, Rezistor);
+        client.craft(&Rekurzium.get_recipe().unwrap()).unwrap();
+        client.craft(&Rekurzium.get_recipe().unwrap()).unwrap();
+        client.craft(&Rezistor.get_recipe().unwrap()).unwrap();
+        client.craft(&Tank.get_recipe().unwrap()).unwrap();
         println!("here");
-        client.deposit_all();
+        client.go_to(Hangar);
+        client.perform("use", vec!["tank".to_string()]);
     }*/
     /*let mut jednotka = 0;
     let policka = vec![(3,3),(1,7),(0,9),(0,9),(0,9),(0,9),(0,9),(2,5),(4,1)];
@@ -53,14 +60,24 @@ fn main() {
             thread::sleep(Duration::from_secs(30));
         }
     }*/
-    //bruteforce_crafts(&mut client, 6, 2, &[Ahmedium, Valteren, Andymon, Forcyklat, Rekurzium, Kapacitat, Javascrypton, Misonit, Obskurcium, Rezistor, Triodium, Badassium, Magneton, Transcitor, Diodik]);
+    //bruteforce_crafts(&mut client, 7, 3, &[Forcyklat, Rekurzium, Kapacitat, Javascrypton, Misonit, Obskurcium, Rezistor, Triodium, Badassium, Magneton, Transcitor, Diodik, Ahmedium, Valteren, Andymon]);
 }
 fn recursive_craft(client: &mut Client, element: Element){
-    if let Some(recipe) = element.get_recipe(){
-        for ing in &recipe.ingredients{
-            recursive_craft(client, *ing);
+    client.deposit_all();
+    let mut items = client.list_elements_in_storage();
+    recurse(client, element, &mut items);
+    fn recurse(client: &mut Client, element: Element, items: &mut HashMap<Element,u32>){
+        if let Some(recipe) = element.get_recipe(){
+            for ing in &recipe.ingredients{
+                let entry = items.entry(*ing).or_insert(0);
+                if *entry > 0{
+                    *entry -= 1;
+                } else {
+                    recurse(client, *ing, items);
+                }
+            }
+            client.craft(&recipe).unwrap();
         }
-        client.craft(&recipe).unwrap();
     }
 }
 fn bruteforce_crafts(client: &mut Client, ingredient_count: usize, max_per: usize, bruteforcing: &[Element]){
@@ -200,7 +217,9 @@ pub enum Element {
     Jeep,
     Transcitor,
     Tank,
-    Diodik
+    Diodik,
+    Artefact,
+    Awentit
 }
 impl Element{
     pub fn get_recipe(self) -> Option<Recipe>{
@@ -241,10 +260,10 @@ impl Element{
                 station: Dielna,
                 ingredients: vec![Ahmedium, Ahmedium, Valteren, Andymon, Andymon],
             },
-            /*Triodium => Recipe{
+            Triodium => Recipe{
                 station: Labak,
                 ingredients: vec![Ahmedium, Valteren, Forcyklat, Misonit, Obskurcium],
-            },*/
+            },
             Jeep => Recipe{
                 station: Dielna,
                 ingredients: vec![Forcyklat, Kapacitat, Javascrypton, Misonit, Rezistor],

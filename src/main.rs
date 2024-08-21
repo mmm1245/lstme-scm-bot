@@ -4,8 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{format, Debug, Display, Formatter};
 use std::str::FromStr;
 use std::{io, thread};
+use std::env::args;
 use std::io::Write;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use itertools::Itertools;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount, EnumIter};
@@ -16,21 +17,37 @@ use crate::Element::{Ahmedium, Andymon, Avatar, Badassium, Droid, Forcyklat, Jav
 use crate::Miestnost::{Datacentrum, Dielna, Hangar, Hub, Konstrukcia, Labak, Raketa, Velin, Vypoctovka, Avecko, Sklad};
 
 fn main() {
+    if args().nth(1).map(|arg|arg=="research").unwrap_or(false){
+        let mut clients: Vec<_> = std::fs::read_to_string("clients.txt").unwrap().lines().filter(|str|!str.starts_with("#")).map(|str| {
+            let (name,password) = str.split_once(";").unwrap();
+            Client::new("10.60.67.194:7000", name, password)
+        }).collect();
+        loop {
+            let time = Instant::now();
+            for client in &mut clients {
+                client.go_to(Datacentrum);
+                let json = client.perform("use", vec!["PEPU".to_string()]);
+                if json.has_key("error"){
+                    println!("error: {}", json["error"]);
+                }
+            }
+            println!("took: {}", time.elapsed().as_millis());
+            thread::sleep(Duration::from_millis((10000/* - time.elapsed().as_millis()*/) as u64));
+        }
+        return;
+    }
     //println!("{}", Miestnost::from_str("AVečko").unwrap());
 
     let mut client = Client::new("scm.lstme.sk:7000", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
-    /*let mut client2 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #1", "3hr2mxWYNuQ3qu2p96ZdzEN8");
-    let mut client3 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #2", "PDUJeB7eaCKXZhVvFty2hyei");
+    //let mut client2 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #1", "3hr2mxWYNuQ3qu2p96ZdzEN8");
+    //let mut client3 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #2", "PDUJeB7eaCKXZhVvFty2hyei");
     //let mut client = Client::new("localhost:6969", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
-    /*thread::spawn(move ||*/ loop {
-        for client in [&mut client2, &mut client3] {
-            client.go_to(Datacentrum);
-            client.perform("use", vec!["PEPU".to_string()]);
-        }
-        thread::sleep(Duration::from_secs(10));
-    }//);*/
 
-    recursive_craft(&mut client, Tank);
+    let places = vec!["9x6"/*,"10x2","9x3","9x4","9x5","10x6","10x7"*/];
+    for (i, unit) in client.perform("units", vec![])["combat_units"].members().enumerate(){
+        client.perform("order", vec!["move".to_string(), unit["callsign"].as_str().unwrap().to_string(), places[i%places.len()].to_string()]);
+    }
+    return;
 
     /*client.craft(&Recipe{ artefakt kolektor
         station: Dielna,
@@ -39,16 +56,15 @@ fn main() {
     //println!("here");
     //println!("{}", client.perform("examine", vec![]));
     //return;
-    /*for _ in 0..50 {
+    for _ in 0..50 {
         //recursive_craft(&mut client, Rezistor);
-        client.craft(&Rekurzium.get_recipe().unwrap()).unwrap();
-        client.craft(&Rekurzium.get_recipe().unwrap()).unwrap();
-        client.craft(&Rezistor.get_recipe().unwrap()).unwrap();
-        client.craft(&Tank.get_recipe().unwrap()).unwrap();
+        recursive_craft(&mut client, Jeep);
+
         println!("here");
+        //client.deposit_all();
         client.go_to(Hangar);
-        client.perform("use", vec!["tank".to_string()]);
-    }*/
+        client.perform("use", vec!["jeep".to_string()]);
+    }
     /*let mut jednotka = 0;
     let policka = vec![(3,3),(1,7),(0,9),(0,9),(0,9),(0,9),(0,9),(2,5),(4,1)];
     for (i,policko) in policka.iter().enumerate(){

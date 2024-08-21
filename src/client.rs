@@ -125,7 +125,7 @@ impl Client{
             //println!("mfg: {str}");
             match json::parse(str.as_str()){
                 Ok(json) => {
-                    if json["action"].as_str().map(|str|str==action).unwrap_or(false) || json.has_key("error") || (action == "use" && json["message"].as_str().map(|str|str.starts_with("Zobral si")||str.starts_with("Odovzdal si")).unwrap_or(false)){
+                    if json["action"].as_str().map(|str|str==action).unwrap_or(false) || json.has_key("error") || (action == "units" && json.has_key("combat_units")){
                         return json;
                     } else {
                         continue;

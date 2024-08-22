@@ -51,24 +51,30 @@ impl Client{
         self.current_inventory = Inventory{items: json["items"].members().map(|json|Element::from_str(json["name"].as_str().unwrap()).unwrap()).collect()}
     }
     pub fn deposit_all(&mut self){
-        self.go_to(Miestnost::Sklad);
-        for item in self.current_inventory.items.clone(){
-            self.perform("use", vec!["elem".to_string(), "deposit".to_string(), item.to_string()]);
-        }
+        self.go_to(Sklad);
+        let mut args = vec!["elem".to_string(), "deposit".to_string()];
+        args.extend(self.current_inventory.items.iter().map(|item|item.to_string()));
+        self.perform("use", args);
         self.current_inventory.items.clear();
     }
-    pub fn take_item(&mut self, item: Element) -> anyhow::Result<()>{
-        if self.current_inventory.items.len() >= 10{
+    pub fn take_items(&mut self, items: Vec<Element>) -> anyhow::Result<()>{
+        if self.current_inventory.items.len() + items.len() > 10{
             return Err(anyhow!("full inventory"));
         }
         self.go_to(Miestnost::Sklad);
-        let code = self.perform("use", vec!["elem".to_string(), "take".to_string(), item.to_string()]);
-        if !code.has_key("error"){
-            self.current_inventory.items.push(item);
-            Ok(())
-        } else {
-            Err(anyhow!("not enough items {item}"))
+        /*let mut args = vec!["elem".to_string(), "take".to_string()];
+        args.extend(items.iter().map(|item|item.to_string()));
+        let code = self.perform("use", args);*/
+        for item in items{
+            let code = self.perform("use", vec!["el".to_string(), "take".to_string(), item.to_string()]);
+            if !code.has_key("error"){
+                self.current_inventory.items.push(item);
+            } else {
+                return Err(anyhow!("not enough items {}", code));
+            }
         }
+        //self.current_inventory.items.extend(items);
+        Ok(())
     }
     pub fn have_items(&mut self, items: Vec<Element>){
         let mut to_take = items.clone();
@@ -83,15 +89,21 @@ impl Client{
                 extra.remove(pos);
             }
         }
-        for _ in 0..(self.current_inventory.items.len() as isize + to_take.len() as isize - 10){
-            self.go_to(Miestnost::Sklad);
-            //println!("here");
-            self.perform("use", vec!["elem".to_string(), "deposit".to_string(), extra.pop().unwrap().to_string()]);
+        {
+            let mut args = vec!["elem".to_string(), "deposit".to_string()];
+            let dep: Vec<Element> = extra.iter().take((self.current_inventory.items.len() as isize + to_take.len() as isize - 10).max(0) as usize).cloned().collect();
+            args.extend(dep.iter().map(|item|item.to_string()));
+            for dep in &dep{
+                if let Some(pos) = self.current_inventory.items.iter().position(|x| *x == *dep) {
+                    self.current_inventory.items.remove(pos);
+                }
+            }
+            if !dep.is_empty(){
+                self.perform("use", args);
+            }
         }
         self.reload_inventory();
-        for take in to_take{
-            self.take_item(take).unwrap();
-        }
+        self.take_items(to_take).unwrap();
     }
     pub fn craft(&mut self, recipe: &Recipe) -> anyhow::Result<()>{
         self.have_items(recipe.ingredients.clone());

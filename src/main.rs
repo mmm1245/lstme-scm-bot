@@ -3,7 +3,7 @@ mod client;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{format, Debug, Display, Formatter};
 use std::str::FromStr;
-use std::{io, thread};
+use std::{io, iter, thread};
 use std::env::args;
 use std::io::Write;
 use std::time::{Duration, Instant};
@@ -13,14 +13,14 @@ use strum_macros::{Display, EnumCount, EnumIter};
 use unidecode::unidecode;
 use Element::Diodik;
 use crate::client::{Client};
-use crate::Element::{Ahmedium, Andymon, Avatar, Badassium, Droid, Forcyklat, Javascrypton, Jeep, Kapacitat, Magneton, Misonit, Obskurcium, Rekurzium, Rezistor, Tank, Transcitor, Triodium, Valteren};
+use crate::Element::{Ahmedium, Andymon, Avatar, Awentit, Badassium, Droid, Forcyklat, Javascrypton, Jeep, Kapacitat, Magneton, Misonit, Obskurcium, Rekurzium, Rezistor, Tank, Transcitor, Triodium, Valteren};
 use crate::Miestnost::{Datacentrum, Dielna, Hangar, Hub, Konstrukcia, Labak, Raketa, Velin, Vypoctovka, Avecko, Sklad};
 
 fn main() {
     if args().nth(1).map(|arg|arg=="research").unwrap_or(false){
         let mut clients: Vec<_> = std::fs::read_to_string("clients.txt").unwrap().lines().filter(|str|!str.starts_with("#")).map(|str| {
             let (name,password) = str.split_once(";").unwrap();
-            Client::new("10.60.67.194:7000", name, password)
+            Client::new("scm.lstme.sk:7000", name, password)
         }).collect();
         loop {
             let time = Instant::now();
@@ -37,17 +37,45 @@ fn main() {
         return;
     }
     //println!("{}", Miestnost::from_str("AVečko").unwrap());
-
     let mut client = Client::new("scm.lstme.sk:7000", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
     //let mut client2 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #1", "3hr2mxWYNuQ3qu2p96ZdzEN8");
     //let mut client3 = Client::new("scm.lstme.sk:7000", "mmm1245's slave #2", "PDUJeB7eaCKXZhVvFty2hyei");
     //let mut client = Client::new("localhost:6969", "mmm1245", "gtvC6h9mbD9jGKFpe41aKRB6");
 
-    let places = vec!["9x6"/*,"10x2","9x3","9x4","9x5","10x6","10x7"*/];
+    /*let places = vec!["9x6"/*,"10x2","9x3","9x4","9x5","10x6","10x7"*/];
+    let mut together: HashMap<String, Vec<String>> = HashMap::new();
     for (i, unit) in client.perform("units", vec![])["combat_units"].members().enumerate(){
+        together.entry(format!("{}{}",unit["placement"]["name"].as_str().unwrap(),unit["name"].as_str().unwrap() )).or_insert(Vec::new()).push(unit["callsign"].as_str().unwrap().to_string());
+        continue;
         client.perform("order", vec!["move".to_string(), unit["callsign"].as_str().unwrap().to_string(), places[i%places.len()].to_string()]);
     }
-    return;
+    for (place,list) in together{
+        let mut aaa =  vec!["join".to_string()];
+        aaa.extend(list);
+        client.perform("order", aaa);
+    }
+    return;*/
+    let mut required: HashMap<Element, isize> = HashMap::new();
+    required.insert(Andymon, 1000-10);
+    //let mut t = Vec::new();
+    for (material,mut count) in required{
+        //let mut client = clients.pop().unwrap();
+        //t.push(thread::spawn(move || {
+            while count > 0 {
+                client.deposit_all();
+                let items: Vec<Element> = iter::repeat(material).take(count.min(10) as usize).collect();
+                client.take_items(items.clone()).unwrap();
+                client.go_to(Hub);
+                let mut args = vec!["sg".to_string()];
+                args.extend(items.iter().map(|elem| elem.to_string()));
+                client.perform("use", args);
+                count -= 10;
+            }
+        //}));
+    }
+    /*for t in t{
+        t.join().unwrap();
+    }*/
 
     /*client.craft(&Recipe{ artefakt kolektor
         station: Dielna,
@@ -56,7 +84,7 @@ fn main() {
     //println!("here");
     //println!("{}", client.perform("examine", vec![]));
     //return;
-    for _ in 0..50 {
+    /*for _ in 0..50 {
         //recursive_craft(&mut client, Rezistor);
         recursive_craft(&mut client, Jeep);
 
@@ -64,7 +92,7 @@ fn main() {
         //client.deposit_all();
         client.go_to(Hangar);
         client.perform("use", vec!["jeep".to_string()]);
-    }
+    }*/
     /*let mut jednotka = 0;
     let policka = vec![(3,3),(1,7),(0,9),(0,9),(0,9),(0,9),(0,9),(2,5),(4,1)];
     for (i,policko) in policka.iter().enumerate(){
@@ -195,6 +223,7 @@ impl Miestnost {
             return path;
         }
         let mut went = HashSet::new();
+        went.insert(self);
         fn recurse(miestnost: Miestnost, other: Miestnost, went: &mut HashSet<Miestnost>, path: &mut Vec<Miestnost>) -> bool {
             for neighbor in miestnost.get_neighbors(){
                 if went.contains(neighbor){
